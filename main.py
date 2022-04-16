@@ -1,119 +1,171 @@
-import pygame # 1. pygame 선언
-pygame.init() # 2. pygame 초기화
-# 3. pygame에 사용되는 전역변수 선언
+import pygame
+
+class Cell:
+    def __init__(self):
+        self.value = 0
+        self.nextValue = 0
+    def __str__(self):
+        return self.value
+
+class Lifegame:
+    def __init__(self, board_size=10):
+        self.init = True
+        self.board_size = board_size
+        self.board = self.create_board()
+        self.running = True
+    def create_board(self):
+        board = []
+        for N in range(self.board_size):
+            row = []
+            for M in range(self.board_size):
+                row.append(Cell())
+            board.append(row)
+        return board
+
+    def reset(self):
+        self.init = True
+        for N in range(self.board_size):
+            for M in range(self.board_size):
+                self.board[N][M].value = EMPTY
+                self.board[N][M].nextValue = EMPTY
+
+    def set_cell(self, i, j, opt=0):
+        if opt==0:
+            self.board[i][j].value = FILLED
+        else:
+            self.board[i][j].nextValue = FILLED
+    def clear_cell(self, i, j, opt=0):
+        if opt==0:
+            self.board[i][j].value = EMPTY
+        else:
+            self.board[i][j].nextValue = EMPTY
+    def keep_cell(self, i, j):
+        self.board[i][j].nextValue = self.board[i][j].value
+
+    def get_neighbor_cells(self, i, j):
+        neighbors = []
+        start_i = i - 1
+        end_i = i + 1
+        if start_i < 0:
+            start_i = self.board_size - 1
+        if end_i == self.board_size:
+            end_i = 0
+        start_j = j - 1
+        end_j = j + 1
+        if start_j < 0:
+            start_j = self.board_size - 1
+        if end_j == self.board_size:
+            end_j = 0
+        neighbors.append((start_i, start_j))
+        neighbors.append((start_i, j))
+        neighbors.append((start_i, end_j))
+        neighbors.append((i, start_j))
+        neighbors.append((i, end_j))
+        neighbors.append((end_i, start_j))
+        neighbors.append((end_i, j))
+        neighbors.append((end_i, end_j))
+        return neighbors  
+    def is_cell_set(self, i, j):
+        if self.board[i][j].value == FILLED:
+            return True
+        else:
+            return False             
+    def count_set_neighbors(self, i, j):
+        count = 0
+        for idx in self.get_neighbor_cells(i,j):
+            ii = idx[0]
+            jj = idx[1]
+            if self.is_cell_set(ii, jj):
+                count += 1
+        return count
+    def cell_next(self, i, j):
+        num_set_cells = self.count_set_neighbors( i, j)
+        if num_set_cells == 2:
+           self.keep_cell(i,j) 
+        elif num_set_cells == 3:
+            self.set_cell(i,j, opt=1)
+        else:
+            self.clear_cell(i,j, opt=1)
+
+
+    def proceed(self):
+        for i in range(self.board_size):
+            for j in range(self.board_size):
+                self.cell_next(i, j)
+        for i in range(self.board_size):
+            for j in range(self.board_size):
+                self.board[i][j].value =  self.board[i][j].nextValue
+
+
+
+
+TOTAL_CELLS = 50
+CELL_PIXELS = 16
+PADDING = 10
+BOARD_SIZE = CELL_PIXELS * TOTAL_CELLS + PADDING * 2
+EMPTY = 0
+FILLED = 1
 WHITE = (255,255,255)
-BLACK = (0, 0, 0)
-YELLOW = (255, 255, 0)
-RED = (255, 0, 0)
-large_font = pygame.font.SysFont(None, 72)
-small_font = pygame.font.SysFont(None, 36)
-size = [180,180]
-screen = pygame.display.set_mode(size)
-turn = 0 
-grid = [' ', ' ', ' ', 
-        ' ', ' ', ' ', 
-        ' ', ' ', ' ']
-done = False
+BLACK = (255,255,255)
+
+
+
+def calcPos2_ij(mx, my):
+    j = (mx - PADDING) / CELL_PIXELS
+    i = (my - PADDING) / CELL_PIXELS
+    return int(i), int(j)
+
+life = Lifegame(TOTAL_CELLS)
 clock = pygame.time.Clock()
-def is_valid_position(grid, position):
-    if grid[position] == ' ':
-        return True
-    else:
-        return False
-def is_winner(grid, mark):
-    if (grid[0] == mark and grid[1] == mark and grid[2] == mark) or \
-        (grid[3] == mark and grid[4] == mark and grid[5] == mark) or \
-        (grid[6] == mark and grid[7] == mark and grid[8] == mark) or \
-        (grid[0] == mark and grid[3] == mark and grid[6] == mark) or \
-        (grid[1] == mark and grid[4] == mark and grid[7] == mark) or \
-        (grid[2] == mark and grid[5] == mark and grid[8] == mark) or \
-        (grid[0] == mark and grid[4] == mark and grid[8] == mark) or \
-        (grid[2] == mark and grid[4] == mark and grid[6] == mark):
-        return True
-    else:
-        return False
-def is_grid_full(grid):
-    full = True
-    for mark in grid:
-        if mark == ' ':
-            full = False 
+SURFACE = pygame.display.set_mode((BOARD_SIZE, BOARD_SIZE))
+fps = 60
+mouse_pressed = False
+mouse_clicked = False
+mouse_pos_x=0
+mouse_pos_y =0
+initial_cells = []
+while life.running:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            life.running = False
             break
-    return full
-turn = 0 
-def runGame():
-    #게임 활용 변수
-    CELL_SIZE = 60
-    COLUMN_COUNT = 3
-    ROW_COUNT = 3
-    X_WIN = 1
-    O_WIN = 2
-    DRAW = 3
-    game_over = 0
-    global done, turn, grid
-    while not done:
-        clock.tick(30)
-        screen.fill(BLACK)
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                done=True
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                if turn == 0:
-                    column_index = event.pos[0] // CELL_SIZE
-                    row_index = event.pos[1] // CELL_SIZE
-                    position = column_index + 3 * row_index
-                    if is_valid_position(grid, position):
-                        grid[position] = 'X'
-                        if is_winner(grid, 'X'):
-                            print('X 가 이겼습니다.')
-                            game_over = X_WIN
-                            #break
-                        elif is_grid_full(grid):
-                            print('무승부 입니다.')
-                            game_over = DRAW
-                            #break
-                        turn += 1
-                        turn = turn % 2
-                else:       
-                    column_index = event.pos[0] // CELL_SIZE
-                    row_index = event.pos[1] // CELL_SIZE
-                    position = column_index + 3 * row_index
-                    if is_valid_position(grid, position):
-                        grid[position] = 'O'   
-                        if is_winner(grid, 'O'):
-                            print('O 가 이겼습니다.')
-                            game_over = O_WIN
-                            #break
-                        elif is_grid_full(grid):
-                            print('무승부 입니다.')
-                            game_over = DRAW
-                            #break
-                        turn += 1
-                        turn = turn % 2
-            #화면 그리기
-            for column_index in range(COLUMN_COUNT):
-                for row_index in range(ROW_COUNT):
-                    rect = (CELL_SIZE * column_index, CELL_SIZE * row_index, CELL_SIZE, CELL_SIZE)
-                    pygame.draw.rect(screen, WHITE, rect, 1)
-            for column_index in range(COLUMN_COUNT):
-                for row_index in range(ROW_COUNT):
-                    position = column_index + 3 * row_index
-                    mark = grid[position]
-                    if mark == 'X':
-                        X_image = small_font.render('{}'.format('X'), True, RED)
-                        screen.blit(X_image, (CELL_SIZE * column_index + 20, CELL_SIZE * row_index + 20)) 
-                    elif mark == 'O':
-                        O_image = small_font.render('{}'.format('O'), True, WHITE)
-                        screen.blit(O_image, (CELL_SIZE * column_index + 20, CELL_SIZE * row_index + 20)) 
-            if not game_over: 
-                pass
+
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            print("mouse down")
+            mouse_pressed = True
+
+        elif event.type == pygame.MOUSEBUTTONUP:
+            print("mouse up")
+            mouse_pressed = False
+
+
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_s:
+                life.init = False
+            elif event.key == pygame.K_r:
+                life.reset()
+
+    if mouse_pressed and life.init:
+        mouse_pos_x, mouse_pos_y = pygame.mouse.get_pos()
+        i, j = calcPos2_ij(mouse_pos_x, mouse_pos_y)
+        print( mouse_pos_x, mouse_pos_y)
+        if life.is_cell_set(i,j) == False:
+            life.set_cell(i,j)
+
+
+
+    # drawing the board
+    for i in range(life.board_size):
+        for j in range(life.board_size):
+            rect = (j * CELL_PIXELS + PADDING, i * CELL_PIXELS  + PADDING, CELL_PIXELS, CELL_PIXELS)
+            if life.is_cell_set(i,j):
+                pygame.draw.rect(SURFACE, (240, 217,183), rect, 0)
             else:
-                if game_over == X_WIN:
-                    game_over_image = large_font.render('X wins', True, RED)
-                elif game_over == O_WIN:
-                    game_over_image = large_font.render('O wins', True, RED)
-                else:
-                    game_over_image = large_font.render('Draw', True, RED)
-                screen.blit(game_over_image, (180 // 2 - game_over_image.get_width() // 2, 180 // 2 - game_over_image.get_height() // 2))
-            pygame.display.update() #모든 화면 그리기 업데이트
-runGame()
+                pygame.draw.rect(SURFACE, (180, 136, 102), rect, 0)
+
+
+    pygame.display.flip()
+    if life.init == False:
+        life.proceed()
+    clock.tick(fps)
 pygame.quit()
