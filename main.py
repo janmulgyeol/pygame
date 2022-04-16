@@ -159,9 +159,9 @@ while life.running:
         for j in range(life.board_size):
             rect = (j * CELL_PIXELS + PADDING, i * CELL_PIXELS  + PADDING, CELL_PIXELS, CELL_PIXELS)
             if life.is_cell_set(i,j):
-                pygame.draw.rect(SURFACE, (240, 217,183), rect, 0)
+                pygame.draw.rect(SURFACE, (255, 255,255), rect, 0)
             else:
-                pygame.draw.rect(SURFACE, (180, 136, 102), rect, 0)
+                pygame.draw.rect(SURFACE, (10, 0, 0), rect, 0)
 
 
     pygame.display.flip()
